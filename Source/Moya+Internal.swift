@@ -11,14 +11,14 @@ internal extension MoyaProvider {
         let endpoint = self.endpoint(target)
         let stubBehavior = self.stubClosure(target)
         let cancellableToken = CancellableWrapper()
-
+        
         if trackInflights {
             objc_sync_enter(self)
             var inflightCompletionBlocks = self.inflightRequests[endpoint]
             inflightCompletionBlocks?.append(completion)
             self.inflightRequests[endpoint] = inflightCompletionBlocks
             objc_sync_exit(self)
-
+            
             if inflightCompletionBlocks != nil {
                 return cancellableToken
             } else {
@@ -27,15 +27,15 @@ internal extension MoyaProvider {
                 objc_sync_exit(self)
             }
         }
-
+        
         let performNetworking = { (requestResult: Result<URLRequest, Moya.Error>) in
             if cancellableToken.cancelled {
                 self.cancelCompletion(completion, target: target)
                 return
             }
-
+            
             var request: URLRequest!
-
+            
             switch requestResult {
             case .success(let urlRequest):
                 request = urlRequest
@@ -43,13 +43,13 @@ internal extension MoyaProvider {
                 completion(.failure(error))
                 return
             }
-
+            
             switch stubBehavior {
             case .never:
                 let networkCompletion: Moya.Completion = { result in
                     if self.trackInflights {
                         self.inflightRequests[endpoint]?.forEach({ $0(result) })
-
+                        
                         objc_sync_enter(self)
                         self.inflightRequests.removeValue(forKey: endpoint)
                         objc_sync_exit(self)
@@ -74,30 +74,30 @@ internal extension MoyaProvider {
                 cancellableToken.innerCancellable = self.stubRequest(target, request: request, completion: { result in
                     if self.trackInflights {
                         self.inflightRequests[endpoint]?.forEach({ $0(result) })
-
+                        
                         objc_sync_enter(self)
                         self.inflightRequests.removeValue(forKey: endpoint)
                         objc_sync_exit(self)
                     } else {
                         completion(result)
                     }
-                }, endpoint: endpoint, stubBehavior: stubBehavior)
+                    }, endpoint: endpoint, stubBehavior: stubBehavior)
             }
         }
-
+        
         requestClosure(endpoint, performNetworking)
-
+        
         return cancellableToken
     }
     // swiftlint:enable cyclomatic_complexity
     // swiftlint:enable function_body_length
-
+    
     func cancelCompletion(_ completion: Moya.Completion, target: Target) {
         let error = Moya.Error.underlying(NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled, userInfo: nil))
         plugins.forEach { $0.didReceiveResponse(.failure(error), target: target) }
         completion(.failure(error))
     }
-
+    
     /// Creates a function which, when called, executes the appropriate stubbing behavior for the given parameters.
     final func createStubFunction(_ token: CancellableToken, forTarget target: Target, withCompletion completion: @escaping Moya.Completion, endpoint: Endpoint<Target>, plugins: [PluginType]) -> (() -> ()) {
         return {
@@ -105,7 +105,7 @@ internal extension MoyaProvider {
                 self.cancelCompletion(completion, target: target)
                 return
             }
-
+            
             switch endpoint.sampleResponseClosure() {
             case .networkResponse(let statusCode, let data):
                 let response = Moya.Response(statusCode: statusCode, data: data, response: nil)
@@ -118,12 +118,15 @@ internal extension MoyaProvider {
             }
         }
     }
-
+    
     /// Notify all plugins that a stub is about to be performed. You must call this if overriding `stubRequest`.
     final func notifyPluginsOfImpendingStub(_ request: URLRequest, target: Target) {
         if let url = request.url {
-            let alamoRequest = manager.request(url.absoluteString)
-            plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
+            if let httpMethod = HTTPMethod(rawValue: request.httpMethod ?? "GET") {
+                let alamoRequest = manager.request(url.absoluteString, method: httpMethod, parameters: target.parameters)
+                plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
+                
+            }
         }
     }
 }
@@ -131,7 +134,7 @@ internal extension MoyaProvider {
 private extension MoyaProvider {
     func sendUploadMultipart(_ target: Target, request: URLRequest, queue: DispatchQueue?, multipartBody: [MultipartFormData], progress: Moya.ProgressBlock? = nil, completion: @escaping Moya.Completion) -> CancellableWrapper {
         let cancellable = CancellableWrapper()
-
+        
         let multipartFormData = { (form: RequestMultipartFormData) -> Void in
             for bodyPart in multipartBody {
                 switch bodyPart.provider {
@@ -143,7 +146,7 @@ private extension MoyaProvider {
                     self.append(stream: stream, length: length, bodyPart: bodyPart, to: form)
                 }
             }
-
+            
             if let parameters = target.parameters {
                 parameters
                     .flatMap { (key, value) in multipartQueryComponents(key, value) }
@@ -154,7 +157,7 @@ private extension MoyaProvider {
                 }
             }
         }
-
+        
         manager.upload(multipartFormData: multipartFormData, with: request) { (result: MultipartFormDataEncodingResult) in
             switch result {
             case .success(let alamoRequest, _, _):
@@ -167,47 +170,51 @@ private extension MoyaProvider {
                 completion(.failure(Moya.Error.underlying(error as NSError)))
             }
         }
-
+        
         return cancellable
     }
-
+    
     func sendUploadFile(_ target: Target, request: URLRequest, queue: DispatchQueue?, file: URL, progress: ProgressBlock? = nil, completion: @escaping Completion) -> CancellableToken {
         let alamoRequest = manager.upload(file, with: request)
         return self.sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
     }
-
+    
     func sendDownloadRequest(_ target: Target, request: URLRequest, queue: DispatchQueue?, destination: @escaping DownloadDestination, progress: ProgressBlock? = nil, completion: @escaping Completion) -> CancellableToken {
         let alamoRequest = manager.download(resource: request, to: destination)
         return self.sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
     }
-
+    
     func sendRequest(_ target: Target, request: URLRequest, queue: DispatchQueue?, progress: Moya.ProgressBlock?, completion: @escaping Moya.Completion) -> CancellableToken {
         
         if let url = request.url {
-            let alamoRequest = manager.request(url.absoluteString)
-            return sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
+            if let httpMethod = HTTPMethod(rawValue: request.httpMethod ?? "GET") {
+                
+                
+                let alamoRequest = manager.request(url.absoluteString, method: httpMethod, parameters: target.parameters)
+                return sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
+            }
         }
         return CancellableToken(action: {})
     }
-
+    
     func sendAlamofireRequest<T: Request>(_ alamoRequest: T, target: Target, queue: DispatchQueue?, progress: Moya.ProgressBlock?, completion: @escaping Moya.Completion) -> CancellableToken {
         // Give plugins the chance to alter the outgoing request
         let plugins = self.plugins
         plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
-
+        
         var progressAlamoRequest = alamoRequest
         let progressClosure: (Int64, Int64, Int64) -> Void = { (bytesWritten, totalBytesWritten, totalBytesExpected) in
             let sendProgress: () -> () = {
                 progress?(ProgressResponse(totalBytes: totalBytesWritten, bytesExpected: totalBytesExpected))
             }
-
+            
             if let queue = queue {
                 queue.async(execute: sendProgress)
             } else {
                 sendProgress()
             }
         }
-
+        
         // Perform the actual request
         if let progress = progress {
             switch progressAlamoRequest {
@@ -222,7 +229,7 @@ private extension MoyaProvider {
             default: break
             }
         }
-
+        
         if var dataRequest = progressAlamoRequest as? DataRequest {
             dataRequest = dataRequest.response(queue: queue, completionHandler: { handler in
                 let result = convertResponseToResult(handler.response, data: handler.data, error: handler.error)
@@ -230,14 +237,14 @@ private extension MoyaProvider {
                 plugins.forEach { $0.didReceiveResponse(result, target: target) }
                 completion(result)
             })
-
+            
             if let dataRequest = dataRequest as? T {
                 progressAlamoRequest = dataRequest
             }
         }
-
+        
         progressAlamoRequest.resume()
-
+        
         return CancellableToken(request: progressAlamoRequest)
     }
 }
@@ -271,7 +278,7 @@ private extension MoyaProvider {
 /// Encode parameters for multipart/form-data
 private func multipartQueryComponents(_ key: String, _ value: Any) -> [(String, String)] {
     var components: [(String, String)] = []
-
+    
     if let dictionary = value as? [String: Any] {
         for (nestedKey, value) in dictionary {
             components += multipartQueryComponents("\(key)[\(nestedKey)]", value)
@@ -283,6 +290,6 @@ private func multipartQueryComponents(_ key: String, _ value: Any) -> [(String, 
     } else {
         components.append((key, "\(value)"))
     }
-
+    
     return components
 }

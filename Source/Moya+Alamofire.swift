@@ -8,6 +8,9 @@ internal typealias UploadRequest = Alamofire.UploadRequest
 internal typealias DataRequest = Alamofire.DataRequest
 internal typealias StreamRequest = Alamofire.StreamRequest
 
+internal typealias HTTPMethod = Alamofire.HTTPMethod
+
+
 internal typealias URLStringConvertible = Alamofire.URLStringConvertible
 
 /// Choice of parameter encoding.
