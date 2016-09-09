@@ -121,13 +121,8 @@ internal extension MoyaProvider {
     
     /// Notify all plugins that a stub is about to be performed. You must call this if overriding `stubRequest`.
     final func notifyPluginsOfImpendingStub(_ request: URLRequest, target: Target) {
-        if let url = request.url {
-            if let httpMethod = HTTPMethod(rawValue: request.httpMethod ?? "GET") {
-                let alamoRequest = manager.request(url.absoluteString, method: httpMethod, parameters: target.parameters)
-                plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
-                
-            }
-        }
+        let alamoRequest = manager.request(resource: request as URLRequestConvertible)
+        plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
     }
 }
 
@@ -185,16 +180,8 @@ private extension MoyaProvider {
     }
     
     func sendRequest(_ target: Target, request: URLRequest, queue: DispatchQueue?, progress: Moya.ProgressBlock?, completion: @escaping Moya.Completion) -> CancellableToken {
-        
-        if let url = request.url {
-            if let httpMethod = HTTPMethod(rawValue: request.httpMethod ?? "GET") {
-                
-                
-                let alamoRequest = manager.request(url.absoluteString, method: httpMethod, parameters: target.parameters)
-                return sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
-            }
-        }
-        return CancellableToken(action: {})
+        let alamoRequest = manager.request(resource: request as URLRequestConvertible)
+        return sendAlamofireRequest(alamoRequest, target: target, queue: queue, progress: progress, completion: completion)
     }
     
     func sendAlamofireRequest<T: Request>(_ alamoRequest: T, target: Target, queue: DispatchQueue?, progress: Moya.ProgressBlock?, completion: @escaping Moya.Completion) -> CancellableToken {
