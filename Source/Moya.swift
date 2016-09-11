@@ -7,19 +7,20 @@ public typealias Completion = (_ result: Result<Moya.Response, Moya.Error>) -> (
 /// Closure to be executed when progress changes.
 public typealias ProgressBlock = (_ progress: ProgressResponse) -> Void
 
+/// Change to Progress format instea of (Int64,Int64,Int64)
 public struct ProgressResponse {
     public let response: Response?
-    public let progressObject : Progress
-    
+    public let progressObject: Progress
+
     init(progress: Progress, response: Response? = nil) {
         self.progressObject = progress
         self.response = response
     }
-    
+
     public var progress: Double {
         return self.progressObject.fractionCompleted
     }
-    
+
     public var completed: Bool {
         return self.progressObject.fractionCompleted == 1.0 && response != nil
     }
