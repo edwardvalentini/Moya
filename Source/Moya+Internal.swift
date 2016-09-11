@@ -190,9 +190,9 @@ private extension MoyaProvider {
         plugins.forEach { $0.willSendRequest(alamoRequest, target: target) }
         
         var progressAlamoRequest = alamoRequest
-        let progressClosure: (Int64, Int64, Int64) -> Void = { (bytesWritten, totalBytesWritten, totalBytesExpected) in
+        let progressClosure: (Progress) -> Void = { (progressArg) in
             let sendProgress: () -> () = {
-                progress?(ProgressResponse(totalBytes: totalBytesWritten, bytesExpected: totalBytesExpected))
+                progress?(ProgressResponse(progress: progressArg))
             }
             
             if let queue = queue {
