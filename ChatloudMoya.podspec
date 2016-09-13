@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "ChatloudMoya"
-  s.version      = "7.0.0.cl"
+  s.version      = "0.0.1"
   s.summary      = "Network abstraction layer written in Swift"
   s.description  = <<-EOS
   Moya abstracts network commands using Swift Generics to provide developers
