@@ -17,7 +17,7 @@ task :version do
 
   if remote_version.nil?
     puts "There is no current released version. You're about to release a new Pod."
-    version = "0.0.1"
+    version = "7.0.0.0"
   else
     puts "The current released version of your pod is " + remote_spec_version.to_s()
     version = suggested_version_number
