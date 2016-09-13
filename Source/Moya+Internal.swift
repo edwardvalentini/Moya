@@ -134,11 +134,11 @@ private extension MoyaProvider {
             for bodyPart in multipartBody {
                 switch bodyPart.provider {
                 case .Data(let data):
-                    self.append(data: data, bodyPart: bodyPart, to: form)
+                    self.append(data, bodyPart: bodyPart, to: form)
                 case .File(let url):
                     self.append(fileURL: url, bodyPart: bodyPart, to: form)
                 case .Stream(let stream, let length):
-                    self.append(stream: stream, length: length, bodyPart: bodyPart, to: form)
+                    self.append(stream, length: length, bodyPart: bodyPart, to: form)
                 }
             }
 
