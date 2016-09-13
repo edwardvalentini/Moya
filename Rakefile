@@ -1,106 +1,164 @@
-def workspace
-  return 'Demo.xcworkspace'
+PODREPO = "chatloudcocoapods"
+
+desc "Runs the specs [EMPTY]"
+task :spec do
+  # Provide your own implementation
 end
 
-def configuration
-  return 'Debug'
+task :version do
+  git_remotes = `git remote`.strip.split("\n")
+
+  if git_remotes.count > 0
+    puts "-- fetching version number from github"
+    sh 'git fetch'
+
+    remote_version = remote_spec_version
+  end
+
+  if remote_version.nil?
+    puts "There is no current released version. You're about to release a new Pod."
+    version = "0.0.1"
+  else
+    puts "The current released version of your pod is " + remote_spec_version.to_s()
+    version = suggested_version_number
+  end
+
+  puts "Now releasing (" + version + ") "
+  # new_version_number = $stdin.gets.strip
+  # if new_version_number == ""
+    new_version_number = version
+  #end
+
+  replace_version_number(new_version_number)
 end
 
-def targets
-  return [
-    :ios,
-    :osx,
-    # :tvos # Note: we're omiting this until Circle supports testing on tvOS simulators.
-  ]
+desc "Release a new version of the Pod"
+task :release do
+
+  puts "* Running version"
+  sh "rake version"
+
+  # unless ENV['SKIP_CHECKS']
+  #   #if `git symbolic-ref HEAD 2>/dev/null`.strip.split('/').last != 'master'
+  #   #  $stderr.puts "[!] You need to be on the `master' branch in order to be able to do a release."
+  #   #  exit 1
+  #   #end
+  #
+  #   if `git tag`.strip.split("\n").include?(spec_version)
+  #     $stderr.puts "[!] A tag for version `#{spec_version}' already exists. Change the version in the podspec"
+  #     exit 1
+  #   end
+  #
+  #   puts "You are about to release `#{spec_version}`, is that correct? [y/n]"
+  #   exit if $stdin.gets.strip.downcase != 'y'
+  # end
+
+  # puts "* Running specs"
+  # sh "rake spec"
+
+ # puts "* Linting the podspec"
+ # sh "pod lib lint"
+
+  puts "* Releasing"
+  branch = `git rev-parse --abbrev-ref HEAD`.chomp
+
+  # Then release
+  sh "git commit #{podspec_path} -m 'Release #{spec_version}'"
+  sh "git tag -a #{spec_version} -m 'Release #{spec_version}'"
+  sh "git push chatloudorigin #{branch}"
+  sh "git push chatloudorigin --tags"
+  sh "pod repo push #{PODREPO} #{podspec_path} --allow-warnings" # --verbose"
 end
 
-def schemes
-  return {
-    ios: 'Demo',
-    osx: 'MoyaTests-Mac',
-    tvos: 'MoyaTests-tvOS'
-  }
+# @return [Pod::Version] The version as reported by the Podspec.
+#
+def spec_version
+  require 'cocoapods'
+  spec = Pod::Specification.from_file(podspec_path)
+  spec.version
 end
 
-def sdks
-  return {
-    ios: 'iphonesimulator',
-    osx: 'macosx',
-    tvos: 'appletvsimulator9.2'
-  }
-end
+# @return [Pod::Version] The version as reported by the Podspec from remote.
+#
+def remote_spec_version
+  #require 'cocoapods-core'
+  require 'cocoapods'
+  require 'securerandom'
+  fn = SecureRandom.hex
+  branch = `git rev-parse --abbrev-ref HEAD`.chomp
+  if spec_file_exist_on_remote?
+      remote_spec_data = `git show origin/"#{branch}":#{podspec_path}`
+      file = File.open("/tmp/#{fn}.podspec", "w")
+      file.write(remote_spec_data)
+      file.close
 
-def devices
-  return {
-    ios: "name='iPhone 6s'",
-    osx: "arch='x86_64'",
-    tvos: "name='Apple TV 1080p'"
-  }
-end
-
-def xcodebuild_in_demo_dir(tasks, platform, xcprety_args: '')
-  sdk = sdks[platform]
-  scheme = schemes[platform]
-  destination = devices[platform]
-
-  Dir.chdir('Demo') do
-    sh "set -o pipefail && xcodebuild -workspace '#{workspace}' -scheme '#{scheme}' -configuration '#{configuration}' -sdk #{sdk} -destination #{destination} #{tasks} | xcpretty -c #{xcprety_args}"
+      remote_spec = Pod::Specification.from_file("/tmp/#{fn}.podspec")
+      File.delete("/tmp/#{fn}.podspec")
+      remote_spec.version
+  else
+    nil
   end
 end
 
-desc 'Build the Demo app.'
-task :build do
-  xcodebuild_in_demo_dir 'build', :ios
+# @return [Bool] If the remote repository has a copy of the podpesc file or not.
+#
+def spec_file_exist_on_remote?
+  branch = `git rev-parse --abbrev-ref HEAD`.chomp
+  test_condition = `if git rev-parse --verify --quiet origin/"#{branch}":#{podspec_path} >/dev/null;
+  then
+  echo 'true'
+  else
+  echo 'false'
+  fi`
+
+  'true' == test_condition.strip
 end
 
-desc 'Clean build directory.'
-task :clean do
-  xcodebuild_in_demo_dir 'clean', :ios
-end
-
-desc 'Build, then run tests.'
-task :test do
-  targets.map { |platform| xcodebuild_in_demo_dir 'build test', platform, xcprety_args: '--test' }
-  sh "killall Simulator"
-end
-
-desc 'Release a version, specified as an argument.'
-task :release, :version do |task, args|
-  version = args[:version]
-  abort "You must specify a version in semver format." if version.nil? || version.scan(/\d+\.\d+\.\d+/).length == 0
-
-  puts "Updating podspec."
-  filename = "Moya.podspec"
-  contents = File.read(filename)
-  contents.gsub!(/s\.version\s*=\s"\d+\.\d+\.\d+"/, "s.version      = \"#{version}\"")
-  File.open(filename, 'w') { |file| file.puts contents }
-
-  puts "Updating Demo project."
-  Dir.chdir('Demo') do
-    ENV['COCOAPODS_DISABLE_DETERMINISTIC_UUIDS'] = 'true'
-    sh "pod update Moya"
+# @return [String] The relative path of the Podspec.
+#
+def podspec_path
+  podspecs = Dir.glob('*.podspec')
+  if podspecs.count == 1
+    podspecs.first
+  else
+    raise "Could not select a podspec"
   end
+end
 
-  puts "Updating changelog."
-  changelog_filename = "CHANGELOG.md"
-  changelog = File.read(changelog_filename)
-  changelog.gsub!(/# Next/, "# Next\n\n# #{version}")
-  File.open(changelog_filename, 'w') { |file| file.puts changelog }
+# @return [String] The suggested version number based on the local and remote version numbers.
+#
+def suggested_version_number
+  if spec_version != remote_spec_version
+    spec_version.to_s()
+  else
+    next_version(remote_spec_version).to_s()
+  end
+end
 
-  puts "Comitting, tagging, and pushing."
-  message = "Releasing version #{version}."
-  sh "git commit -am '#{message}'"
-  sh "git tag #{version} -m '#{message}'"
-  sh "git push --follow-tags"
+# @param  [Pod::Version] version
+#         the version for which you need the next version
+#
+# @note   It is computed by bumping the last component of the versino string by 1.
+#
+# @return [Pod::Version] The version that comes next after the version supplied.
+#
+def next_version(version)
+  version_components = version.to_s().split(".");
+  last = (version_components.last.to_i() + 1).to_s
+  version_components[-1] = last
+  Pod::Version.new(version_components.join("."))
+end
 
-  puts "Pushing to CocoaPods trunk."
-  sh "pod trunk push Moya.podspec --allow-warnings"
-
-  puts "Pushing as a GitHub Release."
-  require 'octokit'
-  Octokit::Client.new(netrc: true).
-    create_release('Moya/Moya',
-                   version,
-                   name: version,
-                   body: changelog.split(/^# /)[2].strip)
+# @param  [String] new_version_number
+#         the new version number
+#
+# @note   This methods replaces the version number in the podspec file with a new version number.
+#
+# @return void
+#
+def replace_version_number(new_version_number)
+  text = File.read(podspec_path)
+  text.gsub!(/(s.version( )*= ")#{spec_version}(")/, "\\1#{new_version_number}\\3")
+  text.gsub!(/(s.version( )*= ')#{spec_version}(')/, "\\1#{new_version_number}\\3")
+  File.open(podspec_path, "w") { |file| file.puts text }
 end

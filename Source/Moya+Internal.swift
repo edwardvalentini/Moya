@@ -223,7 +223,7 @@ private extension MoyaProvider {
 // MARK: - RequestMultipartFormData appending
 
 private extension MoyaProvider {
-    private func append(data data: NSData, bodyPart: MultipartFormData, to form: RequestMultipartFormData) {
+    private func append(data: NSData, bodyPart: MultipartFormData, to form: RequestMultipartFormData) {
         if let mimeType = bodyPart.mimeType {
             if let fileName = bodyPart.fileName {
                 form.appendBodyPart(data: data, name: bodyPart.name, fileName: fileName, mimeType: mimeType)
@@ -235,13 +235,13 @@ private extension MoyaProvider {
         }
     }
     private func append(fileURL url: NSURL, bodyPart: MultipartFormData, to form: RequestMultipartFormData) {
-        if let fileName = bodyPart.fileName, mimeType = bodyPart.mimeType {
+        if let fileName = bodyPart.fileName, let mimeType = bodyPart.mimeType {
             form.appendBodyPart(fileURL: url, name: bodyPart.name, fileName: fileName, mimeType: mimeType)
         } else {
             form.appendBodyPart(fileURL: url, name: bodyPart.name)
         }
     }
-    private func append(stream stream: NSInputStream, length: UInt64, bodyPart: MultipartFormData, to form: RequestMultipartFormData) {
+    private func append(stream: NSInputStream, length: UInt64, bodyPart: MultipartFormData, to form: RequestMultipartFormData) {
         form.appendBodyPart(stream: stream, length: length, name: bodyPart.name, fileName: bodyPart.fileName ?? "", mimeType: bodyPart.mimeType ?? "")
     }
 }
