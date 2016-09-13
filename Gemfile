@@ -1,10 +1,5 @@
 source 'https://rubygems.org'
 
-gem 'xcpretty'
 
-gem 'cocoapods'
+gem 'cocoapods', '~> 1.1.0.rc.1'
 gem 'rake'
-gem 'octokit', '~> 4.3'
-
-gem 'danger'
-gem 'danger-swiftlint'
