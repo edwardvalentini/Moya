@@ -4,26 +4,17 @@
 
 language: objective-c
 osx_image: xcode8
-podfile: Demo/Podfile
-env:
-   global:
-   - LANG=en_US.UTF-8
-   - WORKSPACE="Demo/Demo.xcworkspace"
-   - IOS_SCHEME="Demo"
-   - IOS_SDK=iphonesimulator10.0
-
-   matrix:
-   - DESTINATION="OS=10.0,name=iPhone 6s Plus" SDK="$IOS_SDK" SCHEME="$IOS_SCHEME"
 
 before_install:
  - rvm install ruby-2.3.1
  - brew install swiftlint
+ - brew install carthage
  - gem install bundler
  - bundle install
  - bundle exec pod update --project-directory=Demo
 
 script:
  - bundle exec danger
- - rake test
- - rake carthage_test
+ - bundle exec rake test
+ - bundle exec rake carthage_test
  - bash <(curl -s https://codecov.io/bash)
