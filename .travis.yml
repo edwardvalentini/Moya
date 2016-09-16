@@ -24,6 +24,7 @@ before_install:
  - gem install xcpretty-travis-formatter --no-rdoc --no-ri --no-document --quiet
  - pod install --project-directory=Demo
  - xcrun instruments -w 'E8DD285C-51EE-4DB5-B326-7E927686EC36' || true
+ 
 script:
  - rake test
  - rake carthage_test
