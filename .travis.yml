@@ -20,8 +20,7 @@ before_install:
  - brew install swiftlint
  - gem install bundler
  - bundle install
- - bundle exec pod install --project-directory=Demo
- - xcrun instruments -w 'E8DD285C-51EE-4DB5-B326-7E927686EC36' || true
+ - bundle exec pod update --project-directory=Demo
 
 script:
  - bundle exec danger

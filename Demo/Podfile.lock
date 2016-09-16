@@ -60,19 +60,19 @@ EXTERNAL SOURCES:
 
 CHECKOUT OPTIONS:
   Nimble:
-    :commit: fcc28b23f57b30382e5f182c238674694d7174cb
+    :commit: 197a46a5892340a2badc70af7f669b6aa4c8afa9
     :git: https://github.com/Quick/Nimble
   Quick:
     :commit: 8f2bc636ecfa2cc20696f62548b38d4ab943e299
     :git: https://github.com/Quick/Quick
   Result:
-    :commit: df233a8d23a545153d5b5de13b1ac8db2503f088
+    :commit: 36393ea4ebeb56bdb2e6c6502d79905f255391a4
     :git: https://github.com/antitypical/Result
   RxCocoa:
-    :commit: 06129b50cf17bc24bd0bef9e60982eac35f7d1c1
+    :commit: d6d4e8754f6ec5fbcb867b1a96dbbafdbf27e549
     :git: https://github.com/ReactiveX/RxSwift
   RxSwift:
-    :commit: 06129b50cf17bc24bd0bef9e60982eac35f7d1c1
+    :commit: d6d4e8754f6ec5fbcb867b1a96dbbafdbf27e549
     :git: https://github.com/ReactiveX/RxSwift
 
 SPEC CHECKSUMS:
@@ -87,4 +87,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 96e9b55f3f3195f74670d808fde9bdd2e6d114c8
 
-COCOAPODS: 1.0.1
+COCOAPODS: 1.1.0.rc.2
