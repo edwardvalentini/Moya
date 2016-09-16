@@ -4,7 +4,12 @@
 
 language: objective-c
 osx_image: xcode8
+podfile: Demo/Podfile
 
+env:
+  global:
+    - LANG=en_US.UTF-8
+    
 before_install:
  - rvm install ruby-2.3.1
  - brew install swiftlint
@@ -16,4 +21,6 @@ script:
  - bundle exec danger
  - bundle exec rake test
  - bundle exec rake carthage_test
+
+after_success:
  - bash <(curl -s https://codecov.io/bash)
