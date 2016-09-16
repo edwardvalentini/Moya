@@ -27,3 +27,4 @@ Cartfile.resolved
 Demo/Pods
 .ruby-version
 .ruby-gemset
+carthage_test/
